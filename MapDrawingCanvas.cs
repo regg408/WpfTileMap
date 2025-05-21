@@ -96,6 +96,13 @@ namespace WpfTileMap
             this.UpdateView();
         }
 
+        public void Offset(double offsetX, double offsetY)
+        {
+            double scale = this.GetOffsetScale();
+            this.Center.Offset(offsetX * scale, offsetY * scale);
+            this.UpdateView();
+        }
+
         /// <summary>
         /// 更新樹狀結構
         /// </summary>
@@ -331,11 +338,11 @@ namespace WpfTileMap
         /// <returns></returns>
         public async Task LoadImage()
         {
-            if(this.Status == NODE_STATUS.LOADING_IMAGE)
+            if (this.Status == NODE_STATUS.LOADING_IMAGE)
             {
                 Debug.WriteLine("asdasdasdasd");
             }
-            
+
             try
             {
                 this.Status = NODE_STATUS.LOADING_IMAGE;
@@ -409,7 +416,11 @@ namespace WpfTileMap
         /// </summary>
         void Abort()
         {
-            this.CancellationToken.Cancel();
+            if (this.Status == NODE_STATUS.LOADING_IMAGE)
+            {
+                this.CancellationToken.Cancel();
+            }
+
             foreach (var node in this.Children)
             {
                 node.Abort();

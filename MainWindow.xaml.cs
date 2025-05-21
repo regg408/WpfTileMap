@@ -17,6 +17,9 @@ namespace WpfTileMap
     /// </summary>
     public partial class MainWindow : Window
     {
+        bool IsPress = false;
+        Point LastMousePos = new();
+
         public MainWindow()
         {
             InitializeComponent();
@@ -24,10 +27,12 @@ namespace WpfTileMap
 
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
+            this.IsPress = true;
         }
 
         private void Window_MouseUp(object sender, MouseButtonEventArgs e)
         {
+            this.IsPress = false;
         }
 
         private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
@@ -44,7 +49,12 @@ namespace WpfTileMap
 
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {
-
+            Point currentPos = e.GetPosition(this.TileMapCanvas);
+            if (this.IsPress)
+            {
+                this.TileMapCanvas.Offset(this.LastMousePos.X - currentPos.X, currentPos.Y - this.LastMousePos.Y);
+            }
+            this.LastMousePos = currentPos;
         }
     }
 }
