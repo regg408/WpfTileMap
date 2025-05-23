@@ -4,10 +4,27 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WpfTileMap"
+        d:DataContext="{d:DesignInstance Type=local:MainWindowViewModel}"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800" MouseDown="Window_MouseDown" MouseUp="Window_MouseUp" MouseWheel="Window_MouseWheel" MouseMove="Window_MouseMove">
     <Grid>
-        <local:MapDrawingCanvas x:Name="TileMapCanvas"/>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="24"></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition></ColumnDefinition>
+        </Grid.ColumnDefinitions>
 
+        <local:MapDrawingCanvas x:Name="TileMapCanvas" Grid.Column="0" Grid.Row="0"/>
+
+        <StatusBar x:Name="StatusBar" Grid.Column="0" Grid.Row="1">
+            <StatusBarItem HorizontalAlignment="Left">
+                <TextBlock VerticalAlignment="Center" Text="{Binding LonLatText}" />
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock VerticalAlignment="Center" Text="{Binding LevelText}" />
+            </StatusBarItem>
+        </StatusBar>
     </Grid>
 </Window>

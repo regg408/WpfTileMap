@@ -1,9 +1,7 @@
 ﻿using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
-using System.Reflection.Emit;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -17,6 +15,8 @@ namespace WpfTileMap
     internal class MapDrawingCanvas : FrameworkElement
     {
         readonly List<TileNode> Root = [];
+        readonly double MapSize = 2147483648;
+        readonly double MapSizeLevel = 23;
         /// <summary>
         /// 可視範圍
         /// </summary>
@@ -36,7 +36,7 @@ namespace WpfTileMap
         /// <summary>
         /// 最大Level限制
         /// </summary>
-        readonly int MaxLevel = 23;
+        readonly int MaxLevel = 20;
         /// <summary>
         /// 當前需繪製的Node
         /// </summary>
@@ -54,10 +54,11 @@ namespace WpfTileMap
                 this.WindowSize.Height = this.ActualHeight;
                 this.UpdateView();
 
-                this.Root.Add(new TileNode(this, 1, "0", new Boundary(0, 0, -1073741824, 1073741824)));
-                this.Root.Add(new TileNode(this, 1, "1", new Boundary(1073741824, 0, 0, 1073741824)));
-                this.Root.Add(new TileNode(this, 1, "2", new Boundary(0, -1073741824, -1073741824, 0)));
-                this.Root.Add(new TileNode(this, 1, "3", new Boundary(1073741824, -1073741824, 0, 0)));
+                double halfMapSize = this.MapSize / 2;
+                this.Root.Add(new TileNode(this, 1, "0", new Boundary(0, 0, -halfMapSize, halfMapSize)));
+                this.Root.Add(new TileNode(this, 1, "1", new Boundary(halfMapSize, 0, 0, halfMapSize)));
+                this.Root.Add(new TileNode(this, 1, "2", new Boundary(0, -halfMapSize, -halfMapSize, 0)));
+                this.Root.Add(new TileNode(this, 1, "3", new Boundary(halfMapSize, -halfMapSize, 0, 0)));
                 foreach (var node in this.Root)
                 {
                     _ = node.LoadImage();
@@ -84,23 +85,92 @@ namespace WpfTileMap
             this.InvalidateVisual();
         }
 
+        /// <summary>
+        /// 從螢幕中心放大
+        /// </summary>
         public void ZoomIn()
         {
             this.Level = Math.Min(this.Level + 1, this.MaxLevel);
             this.UpdateView();
         }
 
+        /// <summary>
+        /// 從螢幕中心縮小
+        /// </summary>
         public void ZoomOut()
         {
             this.Level = Math.Max(this.Level - 1, this.MinLevel);
             this.UpdateView();
         }
 
+        /// <summary>
+        /// 向指定座標放大
+        /// </summary>
+        /// <param name="pixelX"></param>
+        /// <param name="pixelY"></param>
+        public void ZoomIn(double pixelX, double pixelY)
+        {
+            this.Level = Math.Min(this.Level + 1, this.MaxLevel);
+            double scale = this.GetOffsetScale();
+            double offsetX = (pixelX - (this.WindowSize.Width / 2)) * scale;
+            double offsetY = ((this.WindowSize.Height / 2) - pixelY) * scale;
+            this.Center.Offset(offsetX, offsetY);
+            this.UpdateView();
+        }
+
+        /// <summary>
+        /// 向指定座標縮小
+        /// </summary>
+        /// <param name="pixelX"></param>
+        /// <param name="pixelY"></param>
+        public void ZoomOut(double pixelX, double pixelY)
+        {
+            double scale = this.GetOffsetScale();
+            this.Level = Math.Max(this.Level - 1, this.MinLevel);
+            double offsetX = (pixelX - (this.WindowSize.Width / 2)) * scale;
+            double offsetY = ((this.WindowSize.Height / 2) - pixelY) * scale;
+            this.Center.Offset(-offsetX, -offsetY);
+            this.UpdateView();
+        }
+
+        /// <summary>
+        /// 取得當前Level
+        /// </summary>
+        /// <returns></returns>
+        public int GetLevel()
+        {
+            return this.Level;
+        }
+
+        /// <summary>
+        /// 偏移
+        /// </summary>
+        /// <param name="offsetX"></param>
+        /// <param name="offsetY"></param>
         public void Offset(double offsetX, double offsetY)
         {
             double scale = this.GetOffsetScale();
             this.Center.Offset(offsetX * scale, offsetY * scale);
             this.UpdateView();
+        }
+
+        /// <summary>
+        /// 取得經緯度
+        /// </summary>
+        /// <param name="pixelX">x pixel座標</param>
+        /// <param name="pixelY">y pixel座標</param>
+        /// <returns></returns>
+        public Point GetLonLat(double pixelX, double pixelY)
+        {
+            //邊界東、南、西、北
+            //TileNode:   1073741824, -1073741824, -1073741824, 1073741824
+            //TileSystem: 2147483648, 2147483648, 0, 0
+            //需作正規化
+            double halfMapSize = this.MapSize / 2;
+            double x = this.View.West + (pixelX / this.WindowSize.Width) * this.View.Width + halfMapSize;
+            double y = -(this.View.North - (pixelY / this.WindowSize.Height) * this.View.Height) + halfMapSize;
+            TileSystem.PixelXYToLatLong((int)x, (int)y, 23, out double lat, out double lon);
+            return new Point(lon, lat);
         }
 
         /// <summary>
@@ -153,17 +223,15 @@ namespace WpfTileMap
                 var img = node.GetImage();
                 if (img != null)
                 {
-                    Point pt = node.GetTopLeftPointRelativeWindow(this.View, this.WindowSize);
-                    //scale不為1，代表先借用父節點
-                    double scale = Math.Pow(2, this.Level - node.GetLevel());
-                    dc.DrawImage(img, new Rect(pt.X, pt.Y, 256 * scale, 256 * scale));
+                    Rect rect = node.GetTileRect(this.View, this.WindowSize);
+                    dc.DrawImage(img, rect);
                 }
             }
         }
 
         double GetOffsetScale()
         {
-            return Math.Pow(2, this.MaxLevel - this.Level);
+            return Math.Pow(2, this.MapSizeLevel - this.Level);
         }
     }
 
@@ -382,16 +450,19 @@ namespace WpfTileMap
         }
 
         /// <summary>
-        /// 取得此節點在左上點相對於視窗原點座標
+        /// 取得此節點在左上點相對於視窗原點的Pixel Rext
         /// </summary>
         /// <param name="view"></param>
         /// <param name="window"></param>
         /// <returns></returns>
-        public Point GetTopLeftPointRelativeWindow(Boundary view, Size window)
+        public Rect GetTileRect(Boundary view, Size window)
         {
-            double x = ((this.Boundary.West - view.West) / view.Width) * window.Width;
-            double y = ((view.North - this.Boundary.North) / view.Height) * window.Height;
-            return new Point(x, y);
+            double topLeftX = ((this.Boundary.West - view.West) / view.Width) * window.Width;
+            double topLeftY = ((view.North - this.Boundary.North) / view.Height) * window.Height;
+
+            double bottomRightX = ((this.Boundary.East - view.West) / view.Width) * window.Width;
+            double bottomRightY = ((view.North - this.Boundary.South) / view.Height) * window.Height;
+            return new Rect(new Point(topLeftX, topLeftY), new Point(bottomRightX, bottomRightY));
         }
 
         public int GetLevel()

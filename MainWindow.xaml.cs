@@ -1,14 +1,5 @@
-﻿using System.Diagnostics;
-using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
+﻿using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace WpfTileMap
 {
@@ -19,10 +10,13 @@ namespace WpfTileMap
     {
         bool IsPress = false;
         Point LastMousePos = new();
+        MainWindowViewModel ViewModel = new();
 
         public MainWindow()
         {
             InitializeComponent();
+            this.DataContext = this.ViewModel;
+            this.ViewModel.LevelText = $"Level: {this.TileMapCanvas.GetLevel()}";
         }
 
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
@@ -37,14 +31,16 @@ namespace WpfTileMap
 
         private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
         {
+            Point currentPos = e.GetPosition(this.TileMapCanvas);
             if (e.Delta > 0)
             {
-                this.TileMapCanvas.ZoomIn();
+                this.TileMapCanvas.ZoomIn(currentPos.X, currentPos.Y);
             }
             else
             {
-                this.TileMapCanvas.ZoomOut();
+                this.TileMapCanvas.ZoomOut(currentPos.X, currentPos.Y);
             }
+            this.ViewModel.LevelText = $"Level: {this.TileMapCanvas.GetLevel()}";
         }
 
         private void Window_MouseMove(object sender, MouseEventArgs e)
@@ -55,6 +51,8 @@ namespace WpfTileMap
                 this.TileMapCanvas.Offset(this.LastMousePos.X - currentPos.X, currentPos.Y - this.LastMousePos.Y);
             }
             this.LastMousePos = currentPos;
+            Point lonLat = this.TileMapCanvas.GetLonLat(currentPos.X, currentPos.Y);
+            this.ViewModel.LonLatText = $"{lonLat.X}, {lonLat.Y}";
         }
     }
 }
