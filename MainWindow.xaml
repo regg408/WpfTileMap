@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:WpfTileMap"
         d:DataContext="{d:DesignInstance Type=local:MainWindowViewModel}"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800" MouseDown="Window_MouseDown" MouseUp="Window_MouseUp" MouseWheel="Window_MouseWheel" MouseMove="Window_MouseMove">
+        Title="WpfTileMap" Height="450" Width="800" MouseDown="Window_MouseDown" MouseUp="Window_MouseUp" MouseWheel="Window_MouseWheel" MouseMove="Window_MouseMove">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"></RowDefinition>
